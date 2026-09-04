@@ -1,0 +1,29 @@
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Python virtual environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python cache & build files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local uploads & logs
+uploads/
+storage/
+temp/
+*.log
