@@ -1,0 +1,31 @@
+# Core Web Framework
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-multipart>=0.0.9
+
+# Database & Vector Store
+pymongo>=4.6.2
+
+# Embeddings & LLM
+sentence-transformers>=2.5.1
+google-genai>=0.1.0
+
+# Document & Presentation Processing
+pymupdf>=1.23.26
+python-pptx>=0.6.23
+python-docx>=1.1.0
+
+# OCR & Image Processing (Grayscale -> Contrast Enhancement -> OCR)
+pytesseract>=0.3.10
+pillow>=10.2.0
+opencv-python-headless>=4.9.0.80
+
+# Authentication & Security (Developer Mode)
+PyJWT>=2.8.0
+passlib[bcrypt]>=1.7.4
+
+# Testing
+pytest>=8.0.0
+pytest-asyncio>=0.23.0
