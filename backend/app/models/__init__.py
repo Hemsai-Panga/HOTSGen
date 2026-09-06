@@ -6,7 +6,9 @@ from app.models.course import (
     CourseInDB,
     CoursePublicResponse,
     CourseUpdate,
+    PublicSyllabusResponse,
     Subtopic,
+    SyllabusAnalysisResponse,
     Topic,
     Unit,
 )
@@ -34,6 +36,8 @@ __all__ = [
     "CourseUpdate",
     "CourseInDB",
     "CoursePublicResponse",
+    "PublicSyllabusResponse",
+    "SyllabusAnalysisResponse",
     "CourseAdminResponse",
     "SourceType",
     "ProcessingStatus",

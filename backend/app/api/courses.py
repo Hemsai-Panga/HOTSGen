@@ -1,10 +1,11 @@
-"""Public student API routes for course browsing."""
+"""Public student API routes for course browsing and syllabus topic hierarchy retrieval."""
 
 from typing import List
 from fastapi import APIRouter, HTTPException, Query, status
 
-from app.models.course import CoursePublicResponse
+from app.models.course import CoursePublicResponse, PublicSyllabusResponse
 from app.services.course_service import CourseNotFoundError, CourseService
+from app.services.syllabus_service import SyllabusService
 
 router = APIRouter()
 
@@ -48,6 +49,24 @@ def get_course_public(course_code: str) -> CoursePublicResponse:
             description=course.description,
             units=course.units,
         )
+    except CourseNotFoundError:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Course '{course_code.strip().upper()}' not found",
+        )
+
+
+@router.get(
+    "/{course_code}/topics",
+    response_model=PublicSyllabusResponse,
+    summary="Get Course Topics Hierarchy (Student)",
+    description="Public endpoint for students to retrieve the structured unit -> topic -> subtopic syllabus hierarchy.",
+)
+def get_course_topics_public(course_code: str) -> PublicSyllabusResponse:
+    """Retrieve structured syllabus hierarchy for a course with zero authentication."""
+    try:
+        syllabus = SyllabusService.get_course_syllabus(course_code)
+        return syllabus
     except CourseNotFoundError:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

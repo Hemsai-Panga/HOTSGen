@@ -5,6 +5,7 @@ from app.ingestion.image_parser import ImageParser, ImageParserError
 from app.ingestion.ocr_processor import OCRError, OCRProcessor
 from app.ingestion.pdf_parser import PDFParser, PDFParserError
 from app.ingestion.ppt_parser import PPTParser, PPTParserError
+from app.ingestion.syllabus_parser import SyllabusParser, SyllabusParsingError
 
 __all__ = [
     "OCRProcessor",
@@ -17,4 +18,6 @@ __all__ = [
     "DOCParserError",
     "ImageParser",
     "ImageParserError",
+    "SyllabusParser",
+    "SyllabusParsingError",
 ]

@@ -1,9 +1,10 @@
-"""Developer material management, Drop Box, and Document Processing API routes."""
+"""Developer material management, Drop Box, Document Processing, and Syllabus Analysis API routes."""
 
 from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 
 from app.api.deps import get_current_developer
+from app.models.course import SyllabusAnalysisResponse
 from app.models.extracted_content import MaterialProcessResponse
 from app.models.material import (
     MaterialAdminResponse,
@@ -24,6 +25,12 @@ from app.services.material_service import (
     MaterialService,
     MaterialServiceError,
     UnsupportedFileTypeError,
+)
+from app.services.syllabus_service import (
+    ExtractedContentNotFoundError,
+    InvalidMaterialSourceTypeError,
+    SyllabusService,
+    SyllabusServiceError,
 )
 
 router = APIRouter(dependencies=[Depends(get_current_developer)])
@@ -139,6 +146,53 @@ def process_material(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"An unexpected error occurred while processing material: {type(e).__name__}",
+        )
+
+
+@router.post(
+    "/{material_id}/analyze-syllabus",
+    response_model=SyllabusAnalysisResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Analyze Syllabus & Build Course Structure",
+    description="Analyze extracted syllabus text to construct structured units, topics, and subtopics hierarchy.",
+)
+def analyze_syllabus(
+    material_id: str,
+    current_developer: Dict[str, Any] = Depends(get_current_developer),
+) -> SyllabusAnalysisResponse:
+    """Parse extracted syllabus text into units/topics and link hierarchy to the course."""
+    try:
+        response = SyllabusService.analyze_syllabus(material_id)
+        return response
+    except MaterialNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except InvalidMaterialSourceTypeError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except CourseNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e),
+        )
+    except ExtractedContentNotFoundError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        )
+    except SyllabusServiceError as e:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(e),
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred during syllabus analysis: {type(e).__name__}",
         )
 
 

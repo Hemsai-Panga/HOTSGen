@@ -7,12 +7,14 @@ from pydantic import BaseModel, Field, field_validator
 
 class Subtopic(BaseModel):
     """Subtopic within a syllabus topic."""
+    id: Optional[str] = Field(None, description="Deterministic stable ID (e.g. BCSE301_U1_T1_S1)")
     title: str
     description: Optional[str] = None
 
 
 class Topic(BaseModel):
     """Syllabus topic containing optional subtopics and exam designation."""
+    id: Optional[str] = Field(None, description="Deterministic stable ID (e.g. BCSE301_U1_T1)")
     topic_name: str
     subtopics: List[Subtopic] = Field(default_factory=list)
     cat_designation: Optional[str] = None  # e.g., 'CAT1', 'CAT2', or None
@@ -20,6 +22,7 @@ class Topic(BaseModel):
 
 class Unit(BaseModel):
     """Syllabus unit containing topics."""
+    id: Optional[str] = Field(None, description="Deterministic stable ID (e.g. BCSE301_U1)")
     unit_number: int
     unit_name: str
     topics: List[Topic] = Field(default_factory=list)
@@ -65,6 +68,33 @@ class CoursePublicResponse(BaseModel):
     course_name: str
     description: Optional[str] = None
     units: List[Unit] = Field(default_factory=list)
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+class PublicSyllabusResponse(BaseModel):
+    """Public structured syllabus topics hierarchy returned to students."""
+    course_code: str
+    course_name: str
+    description: Optional[str] = None
+    units: List[Unit] = Field(default_factory=list)
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+class SyllabusAnalysisResponse(BaseModel):
+    """Concise summary response returned after analyzing a syllabus document."""
+    material_id: str
+    course_code: str
+    units_count: int
+    topics_count: int
+    subtopics_count: int
+    status: str = "analyzed"
+    message: str = "Syllabus analyzed and course hierarchy updated successfully"
 
     model_config = {
         "populate_by_name": True,

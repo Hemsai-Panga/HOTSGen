@@ -21,6 +21,12 @@ from app.services.material_service import (
     UnsupportedFileTypeError,
 )
 from app.services.storage_service import StorageService
+from app.services.syllabus_service import (
+    ExtractedContentNotFoundError,
+    InvalidMaterialSourceTypeError,
+    SyllabusService,
+    SyllabusServiceError,
+)
 
 __all__ = [
     "CourseService",
@@ -38,4 +44,8 @@ __all__ = [
     "DocumentProcessingError",
     "StoredFileNotFoundError",
     "EmptyExtractionError",
+    "SyllabusService",
+    "SyllabusServiceError",
+    "InvalidMaterialSourceTypeError",
+    "ExtractedContentNotFoundError",
 ]

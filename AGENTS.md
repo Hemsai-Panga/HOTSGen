@@ -139,14 +139,23 @@ Classification & Structuring
   - Extracted content persistence in MongoDB (`extracted_content` collection) per page/slide
   - State machine transitions (`uploaded` $\rightarrow$ `processing` $\rightarrow$ `processed` / `failed`) with idempotent reprocessing
 
+- **Phase 6: Syllabus Analysis and Course Structure**
+  - Developer syllabus analysis endpoint (`POST /dev/materials/{material_id}/analyze-syllabus`) guarded by JWT
+  - Deterministic rule-based parser (`SyllabusParser`) identifying units, topics, and subtopics hierarchy
+  - Stable deterministic identifiers (`<COURSE>_U<N>`, `<COURSE>_U<N>_T<M>`, `<COURSE>_U<N>_T<M>_S<K>`)
+  - Course model updated with structured `units` in MongoDB
+  - Safe re-analysis replacing previous syllabus hierarchy without duplicate creation
+  - Public student syllabus retrieval endpoint (`GET /courses/{course_code}/topics`) with zero authentication
+
 ### Current Phase:
-- **Phase 6: Chunking, Embedding Generation & MongoDB Atlas Vector Search**
+- **Phase 7: Teaching-File Extraction & Content Classification**
 
 ### Next Planned Milestones:
-- **Phase 6:** Chunking, Embedding Generation & MongoDB Atlas Vector Search
-- **Phase 7:** RAG Retrieval & Prompt Orchestration
-- **Phase 8:** LLM HOTS Question Generation & Validation
-- **Phase 9:** React Frontend Integration (Student & Developer UI)
+- **Phase 7:** Teaching-File Extraction & Content Classification (Scope Alignment & CAT/FAT Questions)
+- **Phase 8:** Chunking, Embedding Generation & MongoDB Atlas Vector Search
+- **Phase 9:** RAG Retrieval & Prompt Orchestration
+- **Phase 10:** LLM HOTS Question Generation & Validation
+- **Phase 11:** React Frontend Integration (Student & Developer UI)
 
 ---
 
