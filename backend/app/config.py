@@ -19,6 +19,8 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "change_this_secret_in_production"
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD_HASH: Optional[str] = None
 
     # Embedding Configuration
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"

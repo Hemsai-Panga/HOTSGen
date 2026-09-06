@@ -1,4 +1,4 @@
-"""Main FastAPI application entrypoint with lifespan events and health check endpoints."""
+"""Main FastAPI application entrypoint with lifespan events, routes, and health check endpoints."""
 
 import logging
 from contextlib import asynccontextmanager
@@ -7,6 +7,8 @@ from typing import Any, AsyncGenerator, Dict
 from fastapi import FastAPI, Response, status
 from fastapi.responses import JSONResponse
 
+from app.api.auth import router as auth_router
+from app.api.dev import router as dev_router
 from app.config import get_settings
 from app.database import check_mongo_connection, db_manager
 
@@ -24,7 +26,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     logger.info("Starting up HOTS RAG Backend...")
     # Initialize MongoDB client connection
     db_manager.connect()
-    
+
     # Check initial database connectivity (non-blocking warning if unreachable)
     is_connected, error_msg = check_mongo_connection()
     if is_connected:
@@ -47,16 +49,20 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Register routers
+app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
+app.include_router(dev_router, prefix="/dev", tags=["Developer"])
+
 
 @app.get("/", tags=["Root"])
 def read_root() -> Dict[str, str]:
-    """Root endpoint verifying application availability."""
+    """Root endpoint verifying application availability (Public)."""
     return {"message": "HOTS RAG Backend is running"}
 
 
 @app.get("/health", tags=["Health"])
 def health_check(response: Response) -> Dict[str, Any]:
-    """Health check endpoint verifying API service and MongoDB database connectivity."""
+    """Health check endpoint verifying API service and MongoDB database connectivity (Public)."""
     is_db_healthy, error_reason = check_mongo_connection()
 
     if not is_db_healthy:

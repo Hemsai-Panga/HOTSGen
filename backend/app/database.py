@@ -1,14 +1,64 @@
-"""MongoDB client lifecycle and database access management using PyMongo."""
+"""MongoDB client lifecycle, collection access, and index management using PyMongo."""
 
 import logging
 from typing import Any, Dict, Optional, Tuple
-from pymongo import MongoClient
+from pymongo import ASCENDING, DESCENDING, IndexModel, MongoClient
+from pymongo.collection import Collection
 from pymongo.database import Database
 from pymongo.errors import ConnectionFailure, PyMongoError, ServerSelectionTimeoutError
 
 from app.config import get_settings
 
 logger = logging.getLogger(__name__)
+
+# Collection Name Constants
+COLLECTION_COURSES = "courses"
+COLLECTION_MATERIALS = "materials"
+COLLECTION_TEACHING_QUESTIONS = "teaching_questions"
+COLLECTION_CHUNKS = "chunks"
+COLLECTION_GENERATED_QUESTIONS = "generated_questions"
+
+
+def init_db_indexes(db: Database[Dict[str, Any]]) -> None:
+    """Create sensible database indexes for fast query filtering."""
+    try:
+        # Courses Collection: unique course_code index
+        db[COLLECTION_COURSES].create_indexes([
+            IndexModel([("course_code", ASCENDING)], unique=True, name="idx_course_code_unique"),
+        ])
+
+        # Materials Collection: index by course and processing state
+        db[COLLECTION_MATERIALS].create_indexes([
+            IndexModel([("course_code", ASCENDING)], name="idx_material_course_code"),
+            IndexModel([("processing_status", ASCENDING)], name="idx_material_processing_status"),
+        ])
+
+        # Teaching Questions: indexed for retrieval filtering by course, topic, exam type, year
+        db[COLLECTION_TEACHING_QUESTIONS].create_indexes([
+            IndexModel([("course_code", ASCENDING)], name="idx_tq_course_code"),
+            IndexModel([("exam_type", ASCENDING)], name="idx_tq_exam_type"),
+            IndexModel([("year", DESCENDING)], name="idx_tq_year"),
+            IndexModel([("topic", ASCENDING)], name="idx_tq_topic"),
+            IndexModel([("course_code", ASCENDING), ("topic", ASCENDING), ("exam_type", ASCENDING)], name="idx_tq_compound"),
+        ])
+
+        # Chunks: indexed for filtered metadata lookup prior to semantic retrieval
+        db[COLLECTION_CHUNKS].create_indexes([
+            IndexModel([("course_code", ASCENDING)], name="idx_chunk_course_code"),
+            IndexModel([("topic", ASCENDING)], name="idx_chunk_topic"),
+            IndexModel([("material_id", ASCENDING)], name="idx_chunk_material_id"),
+            IndexModel([("course_code", ASCENDING), ("topic", ASCENDING)], name="idx_chunk_compound"),
+        ])
+
+        # Generated Questions: indexed by course and generation timestamp
+        db[COLLECTION_GENERATED_QUESTIONS].create_indexes([
+            IndexModel([("course_code", ASCENDING)], name="idx_gq_course_code"),
+            IndexModel([("created_at", DESCENDING)], name="idx_gq_created_at"),
+        ])
+
+        logger.info("MongoDB indexes initialized successfully.")
+    except Exception as e:
+        logger.warning(f"Could not create database indexes: {type(e).__name__} - {e}")
 
 
 class MongoDBManager:
@@ -23,14 +73,17 @@ class MongoDBManager:
         settings = get_settings()
         if self.client is None:
             try:
-                # Set a reasonable serverSelectionTimeoutMS so healthchecks and startup do not hang indefinitely
                 self.client = MongoClient(
                     settings.MONGODB_URI,
                     serverSelectionTimeoutMS=5000,
                     connectTimeoutMS=5000,
                 )
                 self.db = self.client[settings.MONGODB_DB_NAME]
-                logger.info("MongoDB client initialized successfully.")
+                logger.info("MongoDB client initialized.")
+                
+                # Check connection and apply indexes if reachable
+                if self.ping()[0]:
+                    init_db_indexes(self.db)
             except Exception as e:
                 logger.error(f"Failed to initialize MongoDB client: {type(e).__name__}")
                 self.client = None
@@ -49,11 +102,10 @@ class MongoDBManager:
                 self.db = None
 
     def ping(self) -> Tuple[bool, Optional[str]]:
-        """Verify the database connectivity via ping command without exposing credentials."""
+        """Verify database connectivity via ping command without exposing credentials."""
         if self.client is None:
             return False, "Database client is not initialized"
         try:
-            # Run ping command on admin or target database
             self.client.admin.command("ping")
             return True, None
         except (ServerSelectionTimeoutError, ConnectionFailure) as e:
@@ -65,6 +117,12 @@ class MongoDBManager:
         except Exception as e:
             logger.warning(f"Unexpected error pinging MongoDB: {type(e).__name__}")
             return False, f"Unexpected error: {type(e).__name__}"
+
+    def get_collection(self, collection_name: str) -> Optional[Collection[Dict[str, Any]]]:
+        """Return a typed collection from the active database."""
+        if self.db is not None:
+            return self.db[collection_name]
+        return None
 
 
 # Global database manager instance
@@ -84,3 +142,28 @@ def get_client() -> Optional[MongoClient[Dict[str, Any]]]:
 def check_mongo_connection() -> Tuple[bool, Optional[str]]:
     """Helper function to check MongoDB connection status."""
     return db_manager.ping()
+
+
+def get_courses_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the courses collection."""
+    return db_manager.get_collection(COLLECTION_COURSES)
+
+
+def get_materials_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the materials collection."""
+    return db_manager.get_collection(COLLECTION_MATERIALS)
+
+
+def get_teaching_questions_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the teaching questions collection."""
+    return db_manager.get_collection(COLLECTION_TEACHING_QUESTIONS)
+
+
+def get_chunks_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the chunks collection."""
+    return db_manager.get_collection(COLLECTION_CHUNKS)
+
+
+def get_generated_questions_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the generated questions collection."""
+    return db_manager.get_collection(COLLECTION_GENERATED_QUESTIONS)
