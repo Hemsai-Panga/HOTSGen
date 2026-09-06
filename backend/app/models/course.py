@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from typing import List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class Subtopic(BaseModel):
@@ -32,12 +32,58 @@ class CourseCreate(BaseModel):
     description: Optional[str] = None
     units: List[Unit] = Field(default_factory=list)
 
+    @field_validator("course_code")
+    @classmethod
+    def normalize_code(cls, v: str) -> str:
+        """Strip and uppercase course code."""
+        return v.strip().upper()
+
+    @field_validator("course_name")
+    @classmethod
+    def strip_name(cls, v: str) -> str:
+        """Strip course name whitespace."""
+        return v.strip()
+
 
 class CourseUpdate(BaseModel):
-    """Schema for updating an existing course."""
-    course_name: Optional[str] = None
+    """Schema for updating an existing course (course_code cannot be changed)."""
+    course_name: Optional[str] = Field(None, min_length=2, max_length=150)
     description: Optional[str] = None
     units: Optional[List[Unit]] = None
+
+    @field_validator("course_name")
+    @classmethod
+    def strip_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None:
+            return v.strip()
+        return v
+
+
+class CoursePublicResponse(BaseModel):
+    """Public course information returned to students without internal metadata."""
+    course_code: str
+    course_name: str
+    description: Optional[str] = None
+    units: List[Unit] = Field(default_factory=list)
+
+    model_config = {
+        "populate_by_name": True,
+    }
+
+
+class CourseAdminResponse(BaseModel):
+    """Developer course information with administrative metadata."""
+    id: Optional[str] = Field(None, description="MongoDB ObjectId string")
+    course_code: str
+    course_name: str
+    description: Optional[str] = None
+    units: List[Unit] = Field(default_factory=list)
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
 class CourseInDB(BaseModel):
@@ -52,24 +98,4 @@ class CourseInDB(BaseModel):
 
     model_config = {
         "populate_by_name": True,
-        "json_schema_extra": {
-            "example": {
-                "course_code": "BCSE301",
-                "course_name": "Database Management Systems",
-                "description": "Core course covering relational models, SQL, and indexing.",
-                "units": [
-                    {
-                        "unit_number": 1,
-                        "unit_name": "Introduction to DBMS & Relational Model",
-                        "topics": [
-                            {
-                                "topic_name": "ER Modeling",
-                                "subtopics": [{"title": "Entities and Relationships"}],
-                                "cat_designation": "CAT1",
-                            }
-                        ],
-                    }
-                ],
-            }
-        },
     }

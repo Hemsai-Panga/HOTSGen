@@ -33,6 +33,7 @@ class CourseRepository:
 
         now = datetime.now(timezone.utc)
         doc = course_in.model_dump()
+        doc["course_code"] = doc["course_code"].strip().upper()
         doc["created_at"] = now
         doc["updated_at"] = now
 
@@ -56,10 +57,8 @@ class CourseRepository:
         if collection is None:
             return None
 
-        doc = collection.find_one({"course_code": course_code.strip().upper()})
-        if not doc:
-            # Fallback to exact match if not uppercase
-            doc = collection.find_one({"course_code": course_code.strip()})
+        normalized_code = course_code.strip().upper()
+        doc = collection.find_one({"course_code": normalized_code})
         return _doc_to_course(doc) if doc else None
 
     @staticmethod
@@ -89,13 +88,14 @@ class CourseRepository:
         if collection is None:
             return None
 
+        normalized_code = course_code.strip().upper()
         update_data = {k: v for k, v in course_update.model_dump().items() if v is not None}
         if not update_data:
-            return CourseRepository.get_course(course_code)
+            return CourseRepository.get_course(normalized_code)
 
         update_data["updated_at"] = datetime.now(timezone.utc)
         result = collection.find_one_and_update(
-            {"course_code": course_code},
+            {"course_code": normalized_code},
             {"$set": update_data},
             return_document=True,
         )
@@ -108,5 +108,6 @@ class CourseRepository:
         if collection is None:
             return False
 
-        result = collection.delete_one({"course_code": course_code})
+        normalized_code = course_code.strip().upper()
+        result = collection.delete_one({"course_code": normalized_code})
         return result.deleted_count > 0

@@ -32,6 +32,7 @@ class MaterialRepository:
 
         now = datetime.now(timezone.utc)
         doc = material_in.model_dump()
+        doc["course_code"] = doc["course_code"].strip().upper()
         doc["created_at"] = now
         doc["updated_at"] = now
 
@@ -56,14 +57,40 @@ class MaterialRepository:
         return _doc_to_material(doc) if doc else None
 
     @staticmethod
-    def list_materials_by_course(course_code: str) -> List[MaterialInDB]:
-        """List all materials associated with a course."""
+    def get_material_by_filename(course_code: str, original_filename: str) -> Optional[MaterialInDB]:
+        """Check for existing material with the same filename in a course to prevent duplicates."""
+        collection = get_materials_collection()
+        if collection is None:
+            return None
+
+        doc = collection.find_one({
+            "course_code": course_code.strip().upper(),
+            "original_filename": original_filename.strip(),
+        })
+        return _doc_to_material(doc) if doc else None
+
+    @staticmethod
+    def list_materials(
+        course_code: Optional[str] = None,
+        skip: int = 0,
+        limit: int = 100,
+    ) -> List[MaterialInDB]:
+        """List materials with optional course filter and pagination."""
         collection = get_materials_collection()
         if collection is None:
             return []
 
-        cursor = collection.find({"course_code": course_code.strip().upper()}).sort("created_at", -1)
+        query: Dict[str, Any] = {}
+        if course_code:
+            query["course_code"] = course_code.strip().upper()
+
+        cursor = collection.find(query).skip(skip).limit(limit).sort("created_at", -1)
         return [_doc_to_material(doc) for doc in cursor]
+
+    @staticmethod
+    def list_materials_by_course(course_code: str) -> List[MaterialInDB]:
+        """List all materials associated with a specific course."""
+        return MaterialRepository.list_materials(course_code=course_code)
 
     @staticmethod
     def update_material_status(

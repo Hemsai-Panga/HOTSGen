@@ -57,13 +57,15 @@ class TestDatabaseFoundation(unittest.TestCase):
 
         mat = MaterialCreate(
             course_code="TEST101",
-            file_name="lecture1.pdf",
+            original_filename="lecture1.pdf",
+            stored_filename="uuid_lecture1.pdf",
             source_type=SourceType.LECTURE_MATERIAL,
             file_type="pdf",
             storage_path="./storage/documents/test.pdf",
+            processing_status=ProcessingStatus.UPLOADED,
         )
         self.assertEqual(mat.source_type, SourceType.LECTURE_MATERIAL)
-        self.assertEqual(mat.processing_status, ProcessingStatus.PENDING)
+        self.assertEqual(mat.processing_status, ProcessingStatus.UPLOADED)
 
         tq = TeachingQuestionCreate(
             course_code="TEST101",

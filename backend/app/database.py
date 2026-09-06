@@ -14,6 +14,7 @@ logger = logging.getLogger(__name__)
 # Collection Name Constants
 COLLECTION_COURSES = "courses"
 COLLECTION_MATERIALS = "materials"
+COLLECTION_EXTRACTED_CONTENT = "extracted_content"
 COLLECTION_TEACHING_QUESTIONS = "teaching_questions"
 COLLECTION_CHUNKS = "chunks"
 COLLECTION_GENERATED_QUESTIONS = "generated_questions"
@@ -31,6 +32,13 @@ def init_db_indexes(db: Database[Dict[str, Any]]) -> None:
         db[COLLECTION_MATERIALS].create_indexes([
             IndexModel([("course_code", ASCENDING)], name="idx_material_course_code"),
             IndexModel([("processing_status", ASCENDING)], name="idx_material_processing_status"),
+        ])
+
+        # Extracted Content: index by material_id and course_code for fast pipeline reads
+        db[COLLECTION_EXTRACTED_CONTENT].create_indexes([
+            IndexModel([("material_id", ASCENDING)], name="idx_ec_material_id"),
+            IndexModel([("course_code", ASCENDING)], name="idx_ec_course_code"),
+            IndexModel([("material_id", ASCENDING), ("page_number", ASCENDING)], name="idx_ec_material_page"),
         ])
 
         # Teaching Questions: indexed for retrieval filtering by course, topic, exam type, year
@@ -152,6 +160,11 @@ def get_courses_collection() -> Optional[Collection[Dict[str, Any]]]:
 def get_materials_collection() -> Optional[Collection[Dict[str, Any]]]:
     """Return the materials collection."""
     return db_manager.get_collection(COLLECTION_MATERIALS)
+
+
+def get_extracted_content_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the extracted content collection."""
+    return db_manager.get_collection(COLLECTION_EXTRACTED_CONTENT)
 
 
 def get_teaching_questions_collection() -> Optional[Collection[Dict[str, Any]]]:
