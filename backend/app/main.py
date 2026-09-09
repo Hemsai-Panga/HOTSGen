@@ -11,6 +11,7 @@ from app.api.auth import router as auth_router
 from app.api.courses import router as public_courses_router
 from app.api.dev import router as dev_router
 from app.api.dev_courses import router as dev_courses_router
+from app.api.dev_embeddings import router as dev_embeddings_router
 from app.api.dev_materials import router as dev_materials_router
 from app.config import get_settings
 from app.database import check_mongo_connection, db_manager
@@ -57,6 +58,7 @@ app.include_router(auth_router, prefix="/auth", tags=["Authentication"])
 app.include_router(dev_router, prefix="/dev", tags=["Developer"])
 app.include_router(dev_courses_router, prefix="/dev/courses", tags=["Course Management (Developer)"])
 app.include_router(dev_materials_router, prefix="/dev/materials", tags=["Material Management (Developer)"])
+app.include_router(dev_embeddings_router, prefix="/dev", tags=["Embeddings & Vector Search (Developer)"])
 app.include_router(public_courses_router, prefix="/courses", tags=["Courses (Student)"])
 
 

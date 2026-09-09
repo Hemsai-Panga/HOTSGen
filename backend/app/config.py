@@ -22,8 +22,10 @@ class Settings(BaseSettings):
     ADMIN_USERNAME: str = "admin"
     ADMIN_PASSWORD_HASH: Optional[str] = None
 
-    # Embedding Configuration
+    # Embedding & Vector Search Configuration
     EMBEDDING_MODEL_NAME: str = "sentence-transformers/all-MiniLM-L6-v2"
+    VECTOR_SEARCH_INDEX_NAME: str = "vector_index"
+    EMBEDDING_DIMENSION: int = 384
 
     # Storage / OCR Configuration
     EXTERNAL_STORAGE_PATH: str = "./storage/documents"

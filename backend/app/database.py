@@ -15,6 +15,7 @@ logger = logging.getLogger(__name__)
 COLLECTION_COURSES = "courses"
 COLLECTION_MATERIALS = "materials"
 COLLECTION_EXTRACTED_CONTENT = "extracted_content"
+COLLECTION_SYLLABUS_ALIGNMENTS = "syllabus_alignments"
 COLLECTION_TEACHING_QUESTIONS = "teaching_questions"
 COLLECTION_CHUNKS = "chunks"
 COLLECTION_GENERATED_QUESTIONS = "generated_questions"
@@ -41,20 +42,37 @@ def init_db_indexes(db: Database[Dict[str, Any]]) -> None:
             IndexModel([("material_id", ASCENDING), ("page_number", ASCENDING)], name="idx_ec_material_page"),
         ])
 
-        # Teaching Questions: indexed for retrieval filtering by course, topic, exam type, year
+        # Syllabus Alignments: indexed for scoped retrieval filtering by course, topic, and scope status
+        db[COLLECTION_SYLLABUS_ALIGNMENTS].create_indexes([
+            IndexModel([("material_id", ASCENDING)], name="idx_sa_material_id"),
+            IndexModel([("course_code", ASCENDING)], name="idx_sa_course_code"),
+            IndexModel([("scope_status", ASCENDING)], name="idx_sa_scope_status"),
+            IndexModel([("course_code", ASCENDING), ("scope_status", ASCENDING)], name="idx_sa_course_scope"),
+            IndexModel([("topic_id", ASCENDING)], name="idx_sa_topic_id"),
+            IndexModel([("material_id", ASCENDING), ("page_number", ASCENDING)], name="idx_sa_material_page"),
+        ])
+
+        # Teaching Questions: indexed for retrieval filtering by course, topic, exam type, year, source material
         db[COLLECTION_TEACHING_QUESTIONS].create_indexes([
+            IndexModel([("source_material_id", ASCENDING)], name="idx_tq_material_id"),
             IndexModel([("course_code", ASCENDING)], name="idx_tq_course_code"),
             IndexModel([("exam_type", ASCENDING)], name="idx_tq_exam_type"),
             IndexModel([("year", DESCENDING)], name="idx_tq_year"),
             IndexModel([("topic", ASCENDING)], name="idx_tq_topic"),
-            IndexModel([("course_code", ASCENDING), ("topic", ASCENDING), ("exam_type", ASCENDING)], name="idx_tq_compound"),
+            IndexModel([("topic_id", ASCENDING)], name="idx_tq_topic_id"),
+            IndexModel([("unit_id", ASCENDING)], name="idx_tq_unit_id"),
+            IndexModel([("course_code", ASCENDING), ("exam_type", ASCENDING), ("year", DESCENDING)], name="idx_tq_course_exam_year"),
+            IndexModel([("course_code", ASCENDING), ("topic_id", ASCENDING), ("exam_type", ASCENDING)], name="idx_tq_compound"),
         ])
 
         # Chunks: indexed for filtered metadata lookup prior to semantic retrieval
         db[COLLECTION_CHUNKS].create_indexes([
-            IndexModel([("course_code", ASCENDING)], name="idx_chunk_course_code"),
-            IndexModel([("topic", ASCENDING)], name="idx_chunk_topic"),
             IndexModel([("material_id", ASCENDING)], name="idx_chunk_material_id"),
+            IndexModel([("course_code", ASCENDING)], name="idx_chunk_course_code"),
+            IndexModel([("unit_id", ASCENDING)], name="idx_chunk_unit_id"),
+            IndexModel([("topic_id", ASCENDING)], name="idx_chunk_topic_id"),
+            IndexModel([("scope_status", ASCENDING)], name="idx_chunk_scope_status"),
+            IndexModel([("course_code", ASCENDING), ("unit_id", ASCENDING), ("topic_id", ASCENDING)], name="idx_chunk_course_unit_topic"),
             IndexModel([("course_code", ASCENDING), ("topic", ASCENDING)], name="idx_chunk_compound"),
         ])
 
@@ -165,6 +183,11 @@ def get_materials_collection() -> Optional[Collection[Dict[str, Any]]]:
 def get_extracted_content_collection() -> Optional[Collection[Dict[str, Any]]]:
     """Return the extracted content collection."""
     return db_manager.get_collection(COLLECTION_EXTRACTED_CONTENT)
+
+
+def get_syllabus_alignments_collection() -> Optional[Collection[Dict[str, Any]]]:
+    """Return the syllabus alignments collection."""
+    return db_manager.get_collection(COLLECTION_SYLLABUS_ALIGNMENTS)
 
 
 def get_teaching_questions_collection() -> Optional[Collection[Dict[str, Any]]]:

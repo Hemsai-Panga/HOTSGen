@@ -24,8 +24,43 @@ from app.models.extracted_content import (
     ExtractedPageContent,
     MaterialProcessResponse,
 )
-from app.models.teaching_question import DifficultyLevel, ExamType, TeachingQuestionCreate, TeachingQuestionInDB
-from app.models.chunk import ChunkCreate, ChunkInDB
+from app.models.syllabus_alignment import (
+    AlignedSegment,
+    AlignedSegmentInDB,
+    AlignmentSummaryResponse,
+    MaterialAlignmentDetailResponse,
+    ScopeStatus,
+)
+from app.models.teaching_question import (
+    DifficultyLevel,
+    ExamType,
+    QuestionExtractionResponse,
+    TeachingQuestionCreate,
+    TeachingQuestionDetailResponse,
+    TeachingQuestionInDB,
+)
+from app.models.chunk import (
+    ChunkCreate,
+    ChunkInDB,
+    ChunkPreparationResponse,
+    MaterialChunksDetailResponse,
+)
+from app.models.embedding import (
+    CourseEmbeddingResponse,
+    EmbeddingStatusResponse,
+    MaterialEmbeddingResponse,
+    VectorSearchRequest,
+    VectorSearchResponse,
+    VectorSearchResult,
+    VectorSearchTarget,
+)
+from app.models.pipeline import (
+    IngestionPipelineResponse,
+    IngestionStatusResponse,
+    PipelineStageResult,
+    StageName,
+    StageStatus,
+)
 from app.models.generated_question import BloomLevel, GeneratedQuestionCreate, GeneratedQuestionInDB, ValidationStatus
 
 __all__ = [
@@ -47,12 +82,33 @@ __all__ = [
     "ExtractedPageContent",
     "ExtractedContentInDB",
     "MaterialProcessResponse",
+    "ScopeStatus",
+    "AlignedSegment",
+    "AlignedSegmentInDB",
+    "AlignmentSummaryResponse",
+    "MaterialAlignmentDetailResponse",
     "ExamType",
     "DifficultyLevel",
     "TeachingQuestionCreate",
     "TeachingQuestionInDB",
+    "QuestionExtractionResponse",
+    "TeachingQuestionDetailResponse",
     "ChunkCreate",
     "ChunkInDB",
+    "ChunkPreparationResponse",
+    "MaterialChunksDetailResponse",
+    "VectorSearchTarget",
+    "VectorSearchRequest",
+    "VectorSearchResult",
+    "VectorSearchResponse",
+    "MaterialEmbeddingResponse",
+    "CourseEmbeddingResponse",
+    "EmbeddingStatusResponse",
+    "StageName",
+    "StageStatus",
+    "PipelineStageResult",
+    "IngestionPipelineResponse",
+    "IngestionStatusResponse",
     "BloomLevel",
     "ValidationStatus",
     "GeneratedQuestionCreate",

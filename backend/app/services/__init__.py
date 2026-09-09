@@ -21,12 +21,44 @@ from app.services.material_service import (
     UnsupportedFileTypeError,
 )
 from app.services.storage_service import StorageService
+from app.services.syllabus_alignment_service import (
+    InvalidMaterialSourceTypeError as AlignmentInvalidSourceTypeError,
+    MissingSyllabusStructureError,
+    SyllabusAlignmentError,
+    SyllabusAlignmentService,
+    UnprocessedMaterialError,
+)
 from app.services.syllabus_service import (
     ExtractedContentNotFoundError,
     InvalidMaterialSourceTypeError,
     SyllabusService,
     SyllabusServiceError,
 )
+from app.services.chunk_service import (
+    ChunkService,
+    ChunkServiceError,
+    InvalidMaterialSourceTypeForChunkingError,
+    UnalignedMaterialChunkError,
+)
+from app.services.teaching_question_service import (
+    EmptyQuestionExtractionError,
+    NonExamPaperMaterialError,
+    TeachingQuestionService,
+    TeachingQuestionServiceError,
+    UnprocessedExamPaperError,
+)
+from app.services.embedding_service import (
+    EmbeddingService,
+    EmbeddingServiceError,
+    EmptyMaterialForEmbeddingError,
+    InvalidMaterialSourceTypeForEmbeddingError,
+)
+from app.services.ingestion_service import (
+    IngestionPipelineError,
+    IngestionPipelineService,
+    InvalidMaterialSourceTypeForPipelineError,
+)
+from app.services.vector_search_service import VectorSearchService
 
 __all__ = [
     "CourseService",
@@ -48,4 +80,26 @@ __all__ = [
     "SyllabusServiceError",
     "InvalidMaterialSourceTypeError",
     "ExtractedContentNotFoundError",
+    "SyllabusAlignmentService",
+    "SyllabusAlignmentError",
+    "AlignmentInvalidSourceTypeError",
+    "UnprocessedMaterialError",
+    "MissingSyllabusStructureError",
+    "TeachingQuestionService",
+    "TeachingQuestionServiceError",
+    "NonExamPaperMaterialError",
+    "UnprocessedExamPaperError",
+    "EmptyQuestionExtractionError",
+    "ChunkService",
+    "ChunkServiceError",
+    "InvalidMaterialSourceTypeForChunkingError",
+    "UnalignedMaterialChunkError",
+    "EmbeddingService",
+    "EmbeddingServiceError",
+    "InvalidMaterialSourceTypeForEmbeddingError",
+    "EmptyMaterialForEmbeddingError",
+    "IngestionPipelineService",
+    "IngestionPipelineError",
+    "InvalidMaterialSourceTypeForPipelineError",
+    "VectorSearchService",
 ]

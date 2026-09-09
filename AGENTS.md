@@ -147,15 +147,57 @@ Classification & Structuring
   - Safe re-analysis replacing previous syllabus hierarchy without duplicate creation
   - Public student syllabus retrieval endpoint (`GET /courses/{course_code}/topics`) with zero authentication
 
+- **Phase 7: Syllabus Alignment & Content Classification**
+  - Developer syllabus alignment endpoints (`POST /dev/materials/{material_id}/align-syllabus` and `GET /dev/materials/{material_id}/alignment`) guarded by JWT
+  - Deterministic lexical scoring and topic catalog matching (`SyllabusAligner`) matching segments to syllabus hierarchy
+  - Scope status categorization (`in_syllabus`, `out_of_syllabus`, `ambiguous`) with confidence scoring and keyword attribution
+  - Out-of-syllabus and ambiguous segments retained and flagged without data loss
+  - MongoDB persistence in `syllabus_alignments` collection with compound indexes and idempotent re-alignment
+  - Supported source types restricted to `lecture_material` and `reference_book`
+
+- **Phase 8: CAT/FAT Exam Question Extraction & Structuring**
+  - Developer exam question extraction endpoints (`POST /dev/materials/{material_id}/extract-questions`, `GET /dev/materials/{material_id}/questions`, `DELETE /dev/materials/{material_id}/questions`) guarded by JWT
+  - Deterministic exam question parsing engine (`ExamQuestionParser`) handling question numbering, subquestions, marks, sections (Part A, Part B), MCQs, and imperfect OCR text
+  - Question classification (`theoretical`, `design`, `numerical`, `scenario`, `mcq`) and difficulty rating (`easy`, `medium`, `hard`)
+  - Deterministic syllabus alignment mapping questions to course units/topics without hallucination
+  - Idempotent re-extraction replacing prior question records for a material cleanly
+  - MongoDB persistence in `teaching_questions` collection with compound indexing
+
+- **Phase 9: RAG Chunking and Metadata Preparation**
+  - Developer chunking endpoints (`POST /dev/materials/{material_id}/chunk`, `GET /dev/materials/{material_id}/chunks`, `DELETE /dev/materials/{material_id}/chunks`) guarded by JWT
+  - Context-preserving paragraph and sentence boundary chunking engine (`ContentChunker`)
+  - Strict filtering of `in_syllabus` content only (discarding out-of-syllabus and ambiguous segments from active knowledge chunks)
+  - Logical separation of normal course content (`chunks`) and past exam questions (`teaching_questions`)
+  - Complete metadata preservation: `course_code`, `unit_id`, `topic_id`, `subtopic_id`, `source_material_id`, `source_type`, `page_number`, `scope_status`
+  - Deterministic and idempotent chunking replacing prior chunks cleanly without duplicates
+  - MongoDB persistence in `chunks` collection with compound indexing
+
+- **Phase 10: Embedding Generation & MongoDB Atlas Vector Search**
+  - Developer embedding endpoints (`POST /dev/materials/{material_id}/generate-embeddings`, `POST /dev/courses/{course_code}/generate-embeddings`, `GET /dev/embeddings/status`, `POST /dev/vector-search`) guarded by JWT
+  - Dense vector generation using Sentence Transformers (`sentence-transformers/all-MiniLM-L6-v2`, 384 dimensions)
+  - Vector storage alongside documents in MongoDB (`chunks` and `teaching_questions` collections)
+  - Metadata-constrained semantic vector search supporting MongoDB Atlas `$vectorSearch` with automatic in-memory cosine fallback for local/test environments
+  - Complete separation between course knowledge search (`target="course_content"`) and past exam exemplars search (`target="teaching_questions"`)
+  - Coverage and index health reporting per course and globally
+
+- **Phase 11: Developer Ingestion Pipeline Integration**
+  - Developer pipeline execution endpoint (`POST /dev/materials/{material_id}/ingest`) guarded by JWT
+  - Developer pipeline status inspection endpoint (`GET /dev/materials/{material_id}/pipeline-status`) guarded by JWT
+  - Category-aware multi-stage orchestration (`IngestionPipelineService`):
+    - **Lecture / Reference Book:** `extraction` $\rightarrow$ `syllabus_alignment` $\rightarrow$ `chunking` $\rightarrow$ `embeddings`
+    - **Exam Paper:** `extraction` $\rightarrow$ `question_structuring` $\rightarrow$ `embeddings`
+    - **Syllabus:** `extraction` $\rightarrow$ `syllabus_analysis`
+  - Granular stage state tracking (`pending`, `running`, `completed`, `failed`, `skipped`) with diagnostic metrics
+  - Fully idempotent re-running replacing stale derived artifacts without duplicate data
+  - Intermediate stage failure handling halting downstream stages and updating database processing status
+
 ### Current Phase:
-- **Phase 7: Teaching-File Extraction & Content Classification**
+- **Phase 12: RAG Retrieval & Prompt Orchestration**
 
 ### Next Planned Milestones:
-- **Phase 7:** Teaching-File Extraction & Content Classification (Scope Alignment & CAT/FAT Questions)
-- **Phase 8:** Chunking, Embedding Generation & MongoDB Atlas Vector Search
-- **Phase 9:** RAG Retrieval & Prompt Orchestration
-- **Phase 10:** LLM HOTS Question Generation & Validation
-- **Phase 11:** React Frontend Integration (Student & Developer UI)
+- **Phase 12:** RAG Retrieval & Prompt Orchestration
+- **Phase 13:** LLM HOTS Question Generation & Validation
+- **Phase 14:** React Frontend Integration (Student & Developer UI)
 
 ---
 

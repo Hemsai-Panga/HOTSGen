@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Optional
+from typing import List, Optional
 from pydantic import BaseModel, Field
 
 
@@ -24,15 +24,24 @@ class TeachingQuestionCreate(BaseModel):
     """Schema for creating a teaching question from past exam papers."""
     course_code: str
     unit: Optional[int] = None
+    unit_id: Optional[str] = None
     topic: Optional[str] = None
+    topic_id: Optional[str] = None
     subtopic: Optional[str] = None
+    subtopic_id: Optional[str] = None
     exam_type: ExamType
     year: int = Field(..., ge=2000, le=2100)
-    marks: int = Field(..., ge=1, le=100)
+    marks: int = Field(default=10, ge=1, le=100)
     question_text: str
+    question_number: Optional[str] = None
+    section: Optional[str] = None
+    subquestions: Optional[List[str]] = None
     difficulty: Optional[DifficultyLevel] = None
-    question_type: Optional[str] = None  # e.g., theoretical, design, numerical, scenario
+    question_type: Optional[str] = None  # e.g., theoretical, design, numerical, scenario, mcq
     source_material_id: Optional[str] = None
+    page_number: Optional[int] = None
+    confidence: Optional[float] = None
+    embedding: Optional[List[float]] = Field(default=None, description="Vector embedding for semantic search")
 
 
 class TeachingQuestionInDB(BaseModel):
@@ -40,17 +49,48 @@ class TeachingQuestionInDB(BaseModel):
     id: Optional[str] = Field(None, description="MongoDB ObjectId as string")
     course_code: str
     unit: Optional[int] = None
+    unit_id: Optional[str] = None
     topic: Optional[str] = None
+    topic_id: Optional[str] = None
     subtopic: Optional[str] = None
+    subtopic_id: Optional[str] = None
     exam_type: ExamType
     year: int
     marks: int
     question_text: str
+    question_number: Optional[str] = None
+    section: Optional[str] = None
+    subquestions: Optional[List[str]] = None
     difficulty: Optional[DifficultyLevel] = None
     question_type: Optional[str] = None
     source_material_id: Optional[str] = None
+    page_number: Optional[int] = None
+    confidence: Optional[float] = None
+    embedding: Optional[List[float]] = None
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     model_config = {
         "populate_by_name": True,
     }
+
+
+class QuestionExtractionResponse(BaseModel):
+    """Response returned after extracting questions from an exam paper material."""
+    material_id: str
+    course_code: str
+    exam_type: ExamType
+    year: int
+    questions_extracted: int
+    status: str = "completed"
+    message: str
+    questions: List[TeachingQuestionInDB] = []
+
+
+class TeachingQuestionDetailResponse(BaseModel):
+    """Response schema for listing/inspecting questions of an exam paper."""
+    material_id: str
+    course_code: str
+    exam_type: Optional[ExamType] = None
+    year: Optional[int] = None
+    total_questions: int
+    questions: List[TeachingQuestionInDB] = []
