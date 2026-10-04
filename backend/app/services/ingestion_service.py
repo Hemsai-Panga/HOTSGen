@@ -105,39 +105,45 @@ class IngestionPipelineService:
                 if stage_name == StageName.EXTRACTION:
                     extract_res = DocumentProcessingService.process_material(material_id)
                     current_stage_res.details = {
-                        "page_count": extract_res.page_count,
+                        "pages_processed": extract_res.pages_processed,
                         "total_characters": extract_res.total_characters,
-                        "has_ocr_content": extract_res.has_ocr_content,
+                        "extraction_method": extract_res.extraction_method,
                     }
-                    current_stage_res.message = f"Extracted {extract_res.page_count} pages of text."
+                    current_stage_res.message = f"Extracted {extract_res.pages_processed} pages of text."
 
                 elif stage_name == StageName.SYLLABUS_ANALYSIS:
                     syllabus_res = SyllabusService.analyze_syllabus(material_id)
                     current_stage_res.details = {
-                        "units_count": len(syllabus_res.units),
+                        "units_count": syllabus_res.units_count,
+                        "topics_count": syllabus_res.topics_count,
+                        "subtopics_count": syllabus_res.subtopics_count,
                     }
-                    current_stage_res.message = f"Analyzed syllabus structure ({len(syllabus_res.units)} units)."
+                    current_stage_res.message = (
+                        f"Analyzed syllabus structure "
+                        f"({syllabus_res.units_count} units, {syllabus_res.topics_count} topics)."
+                    )
 
                 elif stage_name == StageName.SYLLABUS_ALIGNMENT:
                     align_res = SyllabusAlignmentService.align_material(material_id)
                     current_stage_res.details = {
-                        "total_segments": align_res.total_segments,
+                        "total_pages_aligned": align_res.total_pages_aligned,
                         "in_syllabus_count": align_res.in_syllabus_count,
                         "out_of_syllabus_count": align_res.out_of_syllabus_count,
                         "ambiguous_count": align_res.ambiguous_count,
                     }
                     current_stage_res.message = (
-                        f"Aligned {align_res.total_segments} segments "
+                        f"Aligned {align_res.total_pages_aligned} segments "
                         f"({align_res.in_syllabus_count} in-syllabus)."
                     )
 
                 elif stage_name == StageName.CHUNKING:
                     chunk_res = ChunkService.chunk_material(material_id)
                     current_stage_res.details = {
-                        "total_chunks": chunk_res.total_chunks,
-                        "total_tokens": chunk_res.total_tokens,
+                        "chunks_created": chunk_res.chunks_created,
+                        "in_syllabus_pages": chunk_res.in_syllabus_pages,
+                        "total_aligned_pages": chunk_res.total_aligned_pages,
                     }
-                    current_stage_res.message = f"Prepared {chunk_res.total_chunks} context chunks."
+                    current_stage_res.message = f"Prepared {chunk_res.chunks_created} context chunks."
 
                 elif stage_name == StageName.QUESTION_STRUCTURING:
                     q_res = TeachingQuestionService.extract_questions_from_material(material_id)

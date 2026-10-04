@@ -1,6 +1,7 @@
 """PPT and PPTX presentation parser using python-pptx."""
 
 import logging
+import os
 from typing import List
 from pptx import Presentation
 
@@ -15,7 +16,7 @@ class PPTParserError(Exception):
 
 
 class PPTParser:
-    """Parser for PowerPoint (.ppt, .pptx) presentations."""
+    """Parser for PowerPoint (.pptx) presentations."""
 
     @staticmethod
     def extract(material_id: str, course_code: str, file_path: str) -> List[ExtractedPageContent]:
@@ -23,6 +24,13 @@ class PPTParser:
         Extract text slide-by-slide from a PowerPoint presentation.
         Extracts titles, text frames, tables, and slide notes.
         """
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext == ".ppt":
+            logger.warning(f"Legacy .ppt binary format encountered: {file_path}")
+            raise PPTParserError(
+                "Legacy binary '.ppt' files are not supported. Please save or convert to '.pptx' or 'PDF' for parsing."
+            )
+
         try:
             prs = Presentation(file_path)
         except Exception as e:

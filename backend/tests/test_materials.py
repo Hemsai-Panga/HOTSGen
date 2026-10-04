@@ -217,6 +217,19 @@ class TestMaterialManagement(unittest.TestCase):
             self.assertEqual(res.status_code, 400)
             self.assertIn("not supported", res.json()["detail"].lower())
 
+    def test_4b_upload_legacy_ppt_rejected_with_conversion_hint(self) -> None:
+        """Verify (ISSUE 2): Legacy binary .ppt uploads are rejected at upload time with conversion instructions."""
+        with TestClient(app) as client:
+            files = {"file": ("Module-1.ppt", io.BytesIO(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1 legacy ppt"), "application/vnd.ms-powerpoint")}
+            data = {"course_code": "BCSE301", "source_type": "lecture_material"}
+
+            res = client.post("/dev/materials", data=data, files=files, headers=self.auth_headers)
+            self.assertEqual(res.status_code, 400)
+            detail = res.json()["detail"].lower()
+            self.assertIn("not supported", detail)
+            self.assertIn("legacy binary '.ppt'", detail)
+            self.assertIn("convert to '.pptx' or '.pdf'", detail)
+
     def test_5_upload_exam_paper_with_optional_metadata(self) -> None:
         """Verify upload for exam_paper accepts exam_type and year."""
         with TestClient(app) as client:

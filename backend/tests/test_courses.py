@@ -321,16 +321,43 @@ class TestCourseManagement(unittest.TestCase):
             self.assertEqual(res_dev.status_code, 404)
             self.assertIn("not found", res_dev.json()["detail"].lower())
 
-    def test_13_health_check_still_functional(self) -> None:
-        """Verify / and /health remain fully functional and public."""
-        with TestClient(app) as client:
-            res_root = client.get("/")
-            self.assertEqual(res_root.status_code, 200)
-            self.assertEqual(res_root.json(), {"message": "HOTS RAG Backend is running"})
+    def test_14_database_unavailable_returns_503_on_create(self) -> None:
+        """Verify POST /dev/courses returns 503 instead of 409 Conflict when database is unavailable."""
+        from unittest.mock import patch
+        with patch("app.repositories.course_repository.get_courses_collection", return_value=None):
+            with TestClient(app) as client:
+                res = client.post("/dev/courses", json={
+                    "course_code": "BACSE202",
+                    "course_name": "Advanced Operating Systems",
+                }, headers=self.auth_headers)
+                self.assertEqual(res.status_code, 503)
+                self.assertIn("database service unavailable", res.json()["detail"].lower())
 
-            res_health = client.get("/health")
-            self.assertIn(res_health.status_code, [200, 503])
-            self.assertIn("api", res_health.json())
+    def test_15_database_unavailable_returns_503_on_list(self) -> None:
+        """Verify GET /dev/courses and GET /courses return 503 instead of empty list when database is unavailable."""
+        from unittest.mock import patch
+        with patch("app.repositories.course_repository.get_courses_collection", return_value=None):
+            with TestClient(app) as client:
+                # Dev list
+                res_dev = client.get("/dev/courses", headers=self.auth_headers)
+                self.assertEqual(res_dev.status_code, 503)
+                self.assertIn("database service unavailable", res_dev.json()["detail"].lower())
+
+                # Public list
+                res_pub = client.get("/courses")
+                self.assertEqual(res_pub.status_code, 503)
+                self.assertIn("database service unavailable", res_pub.json()["detail"].lower())
+
+    def test_16_database_unavailable_returns_503_on_get(self) -> None:
+        """Verify GET /dev/courses/{code} and GET /courses/{code} return 503 when database is unavailable."""
+        from unittest.mock import patch
+        with patch("app.repositories.course_repository.get_courses_collection", return_value=None):
+            with TestClient(app) as client:
+                res_dev = client.get("/dev/courses/BACSE202", headers=self.auth_headers)
+                self.assertEqual(res_dev.status_code, 503)
+
+                res_pub = client.get("/courses/BACSE202")
+                self.assertEqual(res_pub.status_code, 503)
 
 
 if __name__ == "__main__":

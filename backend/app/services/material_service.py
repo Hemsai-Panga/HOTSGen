@@ -19,12 +19,10 @@ from app.services.storage_service import StorageService
 
 logger = logging.getLogger(__name__)
 
-# Supported file extensions for course document upload
+# Supported file extensions for course document upload (modern XML-based/digital formats)
 ALLOWED_EXTENSIONS = {
     ".pdf",
-    ".ppt",
     ".pptx",
-    ".doc",
     ".docx",
     ".png",
     ".jpg",
@@ -93,8 +91,11 @@ class MaterialService:
 
         if ext_lower not in ALLOWED_EXTENSIONS:
             allowed_list = ", ".join(sorted(ext.lstrip(".") for ext in ALLOWED_EXTENSIONS))
+            hint = ""
+            if ext_lower in {".ppt", ".doc"}:
+                hint = f" Legacy binary '{ext_lower}' files are not supported; please save or convert to '.{ext_lower.lstrip('.')}x' or '.pdf'."
             raise UnsupportedFileTypeError(
-                f"File type '{ext_lower}' is not supported. Allowed formats: {allowed_list}"
+                f"File type '{ext_lower}' is not supported. Allowed formats: {allowed_list}.{hint}"
             )
 
         file_type = ext_lower.lstrip(".")

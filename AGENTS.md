@@ -191,13 +191,22 @@ Classification & Structuring
   - Fully idempotent re-running replacing stale derived artifacts without duplicate data
   - Intermediate stage failure handling halting downstream stages and updating database processing status
 
+- **Phase 12: Developer Mode Frontend**
+  - Developer login interface (`/login`) on pure white background (`#ffffff`) with JWT authentication against `/auth/login`, persistent credential session storage, and clear error alerts
+  - Developer Dashboard (`/dashboard` and `/courses`) with persistent navigation sidebar (Dashboard, Courses, Logout), "No courses available" empty state, and modal course creation
+  - Interactive square course cards (1:1 aspect ratio) showing Course Code, Course Title, 4-category checklist (Syllabus, Lectures, References, Exams), progress ratio (`3/4 complete`), and dynamic readiness badge (`● Ready` / `⚠ Incomplete`)
+  - Course Material Management interface (`/courses/:courseCode`) with 4 visually sequential, non-blocking upload dropzones (① Syllabus, ② Lecture Materials, ③ Reference Books/Notes, ④ CAT/FAT Exam Papers)
+  - Drag-and-drop file upload with multi-file support, exam metadata selectors (Exam Type, Year, Marks), file size formatting, and safe deletion
+  - One-click trigger for end-to-end ingestion pipeline execution (`POST /dev/materials/{id}/ingest`) and granular stage inspection modal (`GET /dev/materials/{id}/pipeline-status`)
+  - Comprehensive automated unit test suite with 100% pass rate across all pages, modals, cards, and upload components
+
 ### Current Phase:
-- **Phase 12: RAG Retrieval & Prompt Orchestration**
+- **Phase 13: RAG Retrieval & Prompt Orchestration**
 
 ### Next Planned Milestones:
-- **Phase 12:** RAG Retrieval & Prompt Orchestration
-- **Phase 13:** LLM HOTS Question Generation & Validation
-- **Phase 14:** React Frontend Integration (Student & Developer UI)
+- **Phase 13:** RAG Retrieval & Prompt Orchestration
+- **Phase 14:** LLM HOTS Question Generation & Validation
+- **Phase 15:** Student Mode Frontend (Zero-Login Public Interface)
 
 ---
 

@@ -11,8 +11,8 @@ from fastapi.testclient import TestClient
 from app.config import get_settings
 from app.core.security import create_access_token, hash_password
 from app.main import app
-from app.models.chunk import ChunkInDB
-from app.models.course import CourseInDB
+from app.models.chunk import ChunkInDB, ChunkPreparationResponse
+from app.models.course import CourseInDB, SyllabusAnalysisResponse
 from app.models.extracted_content import ExtractedContentInDB, ExtractedPageContent, MaterialProcessResponse
 from app.models.material import MaterialInDB, ProcessingStatus, SourceType
 from app.models.pipeline import (
@@ -598,9 +598,35 @@ class TestIngestionPipeline(unittest.TestCase):
         mat_id = self._seed_material("BCSE301", SourceType.LECTURE_MATERIAL, "lecture_indexing.pdf")
 
         # Mock stage return values
-        mock_extract.return_value = MagicMock(page_count=3, total_characters=1500, has_ocr_content=False)
-        mock_align.return_value = MagicMock(total_segments=6, in_syllabus_count=5, out_of_syllabus_count=1, ambiguous_count=0)
-        mock_chunk.return_value = MagicMock(total_chunks=4, total_tokens=400)
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=3,
+            extraction_method="pymupdf",
+            total_characters=1500,
+        )
+        mock_align.return_value = AlignmentSummaryResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            total_pages_aligned=6,
+            in_syllabus_count=5,
+            out_of_syllabus_count=1,
+            ambiguous_count=0,
+            alignment_status="completed",
+            message="Material content aligned against course syllabus hierarchy successfully.",
+        )
+        mock_chunk.return_value = ChunkPreparationResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            source_type="lecture_material",
+            total_aligned_pages=6,
+            in_syllabus_pages=5,
+            chunks_created=4,
+            status="completed",
+            message="Successfully generated 4 knowledge chunks from 5 in-syllabus segments.",
+            chunks=[],
+        )
         mock_embed.return_value = MagicMock(embedded_count=4, dimension=384)
 
         # Trigger pipeline
@@ -617,6 +643,7 @@ class TestIngestionPipeline(unittest.TestCase):
         self.assertEqual(len(stages), 4)
         self.assertEqual(stages[0]["stage"], "extraction")
         self.assertEqual(stages[0]["status"], "completed")
+        self.assertEqual(stages[0]["details"]["pages_processed"], 3)
         self.assertEqual(stages[1]["stage"], "syllabus_alignment")
         self.assertEqual(stages[1]["status"], "completed")
         self.assertEqual(stages[2]["stage"], "chunking")
@@ -643,7 +670,14 @@ class TestIngestionPipeline(unittest.TestCase):
         self._seed_course("BCSE301")
         mat_id = self._seed_material("BCSE301", SourceType.EXAM_PAPER, "cat1_2023.pdf")
 
-        mock_extract.return_value = MagicMock(page_count=2, total_characters=800, has_ocr_content=False)
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=2,
+            extraction_method="pymupdf",
+            total_characters=800,
+        )
         mock_questions.return_value = MagicMock(questions_extracted=3, exam_type=ExamType.CAT1, year=2023)
         mock_embed.return_value = MagicMock(embedded_count=3, dimension=384)
 
@@ -675,8 +709,23 @@ class TestIngestionPipeline(unittest.TestCase):
         self._seed_course("BCSE301")
         mat_id = self._seed_material("BCSE301", SourceType.SYLLABUS, "syllabus.pdf")
 
-        mock_extract.return_value = MagicMock(page_count=2, total_characters=1200, has_ocr_content=False)
-        mock_syllabus.return_value = MagicMock(units=[MagicMock(), MagicMock()])
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=2,
+            extraction_method="pymupdf",
+            total_characters=1200,
+        )
+        mock_syllabus.return_value = SyllabusAnalysisResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            units_count=2,
+            topics_count=8,
+            subtopics_count=4,
+            status="analyzed",
+            message="Successfully structured syllabus into 2 units and 8 topics.",
+        )
 
         response = self.client.post(f"/dev/materials/{mat_id}/ingest", headers=self.auth_headers)
         self.assertEqual(response.status_code, 200)
@@ -687,6 +736,9 @@ class TestIngestionPipeline(unittest.TestCase):
         self.assertEqual(len(stages), 2)
         self.assertEqual(stages[0]["stage"], "extraction")
         self.assertEqual(stages[1]["stage"], "syllabus_analysis")
+        self.assertEqual(stages[1]["details"]["units_count"], 2)
+        self.assertEqual(stages[1]["details"]["topics_count"], 8)
+        self.assertEqual(stages[1]["details"]["subtopics_count"], 4)
         for s in stages:
             self.assertEqual(s["status"], "completed")
 
@@ -705,7 +757,14 @@ class TestIngestionPipeline(unittest.TestCase):
         self._seed_course("BCSE301")
         mat_id = self._seed_material("BCSE301", SourceType.LECTURE_MATERIAL, "lecture_corrupt.pdf")
 
-        mock_extract.return_value = MagicMock(page_count=3, total_characters=1500, has_ocr_content=False)
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=3,
+            extraction_method="pymupdf",
+            total_characters=1500,
+        )
         mock_align.side_effect = RuntimeError("Alignment model timeout")
 
         response = self.client.post(f"/dev/materials/{mat_id}/ingest", headers=self.auth_headers)
@@ -808,9 +867,35 @@ class TestIngestionPipeline(unittest.TestCase):
         self._seed_course("BCSE301")
         mat_id = self._seed_material("BCSE301", SourceType.LECTURE_MATERIAL, "lecture_rerun.pdf")
 
-        mock_extract.return_value = MagicMock(page_count=2, total_characters=1000, has_ocr_content=False)
-        mock_align.return_value = MagicMock(total_segments=4, in_syllabus_count=4, out_of_syllabus_count=0, ambiguous_count=0)
-        mock_chunk.return_value = MagicMock(total_chunks=2, total_tokens=200)
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=2,
+            extraction_method="pymupdf",
+            total_characters=1000,
+        )
+        mock_align.return_value = AlignmentSummaryResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            total_pages_aligned=4,
+            in_syllabus_count=4,
+            out_of_syllabus_count=0,
+            ambiguous_count=0,
+            alignment_status="completed",
+            message="Material content aligned against course syllabus hierarchy successfully.",
+        )
+        mock_chunk.return_value = ChunkPreparationResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            source_type="lecture_material",
+            total_aligned_pages=4,
+            in_syllabus_pages=4,
+            chunks_created=2,
+            status="completed",
+            message="Successfully generated 2 knowledge chunks.",
+            chunks=[],
+        )
         mock_embed.return_value = MagicMock(embedded_count=2, dimension=384)
 
         # First run
@@ -828,6 +913,190 @@ class TestIngestionPipeline(unittest.TestCase):
         self.assertEqual(mock_chunk.call_count, 2)
         self.assertEqual(mock_embed.call_count, 2)
 
+    @patch("app.services.document_processing_service.DocumentProcessingService.process_material")
+    @patch("app.services.syllabus_alignment_service.SyllabusAlignmentService.align_material")
+    @patch("app.services.chunk_service.ChunkService.chunk_material")
+    @patch("app.services.embedding_service.EmbeddingService.generate_material_embeddings")
+    def test_9_extraction_stage_consumes_material_process_response_without_attribute_error(
+        self,
+        mock_embed: MagicMock,
+        mock_chunk: MagicMock,
+        mock_align: MagicMock,
+        mock_extract: MagicMock,
+    ) -> None:
+        """Regression test: Ensure ingestion pipeline handles real MaterialProcessResponse instance without AttributeError."""
+        self._seed_course("BCSE301")
+        mat_id = self._seed_material("BCSE301", SourceType.LECTURE_MATERIAL, "real_process_response.pdf")
+
+        # Instantiate actual MaterialProcessResponse model matching Phase 5 contract
+        real_response = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=3,
+            extraction_method="pymupdf",
+            total_characters=7084,
+            message="Document processed and text extracted successfully",
+        )
+        mock_extract.return_value = real_response
+        mock_align.return_value = AlignmentSummaryResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            total_pages_aligned=5,
+            in_syllabus_count=5,
+            out_of_syllabus_count=0,
+            ambiguous_count=0,
+            alignment_status="completed",
+            message="Material content aligned against course syllabus hierarchy successfully.",
+        )
+        mock_chunk.return_value = ChunkPreparationResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            source_type="lecture_material",
+            total_aligned_pages=5,
+            in_syllabus_pages=5,
+            chunks_created=3,
+            status="completed",
+            message="Successfully generated 3 knowledge chunks.",
+            chunks=[],
+        )
+        mock_embed.return_value = MagicMock(embedded_count=3, dimension=384)
+
+        res = self.client.post(f"/dev/materials/{mat_id}/ingest", headers=self.auth_headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+        self.assertEqual(data["overall_status"], "completed")
+        extract_stage = data["stages"][0]
+        self.assertEqual(extract_stage["stage"], "extraction")
+        self.assertEqual(extract_stage["status"], "completed")
+        self.assertEqual(extract_stage["details"]["pages_processed"], 3)
+        self.assertEqual(extract_stage["details"]["total_characters"], 7084)
+        self.assertEqual(extract_stage["details"]["extraction_method"], "pymupdf")
+        self.assertEqual(extract_stage["message"], "Extracted 3 pages of text.")
+
+    @patch("app.services.document_processing_service.DocumentProcessingService.process_material")
+    @patch("app.services.syllabus_service.SyllabusService.analyze_syllabus")
+    def test_10_syllabus_analysis_stage_consumes_syllabus_analysis_response_without_attribute_error(
+        self,
+        mock_syllabus: MagicMock,
+        mock_extract: MagicMock,
+    ) -> None:
+        """Regression test: Ensure ingestion pipeline handles real SyllabusAnalysisResponse instance without AttributeError."""
+        self._seed_course("BCSE301")
+        mat_id = self._seed_material("BCSE301", SourceType.SYLLABUS, "real_syllabus_analysis_response.pdf")
+
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=4,
+            extraction_method="pymupdf",
+            total_characters=8500,
+            message="Document processed and text extracted successfully",
+        )
+
+        # Instantiate actual SyllabusAnalysisResponse matching Phase 6 canonical model
+        real_syllabus_res = SyllabusAnalysisResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            units_count=6,
+            topics_count=67,
+            subtopics_count=38,
+            status="analyzed",
+            message="Successfully structured syllabus into 6 units and 67 topics.",
+        )
+        mock_syllabus.return_value = real_syllabus_res
+
+        res = self.client.post(f"/dev/materials/{mat_id}/ingest", headers=self.auth_headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+
+        self.assertEqual(data["overall_status"], "completed")
+        self.assertEqual(len(data["stages"]), 2)
+
+        syllabus_stage = data["stages"][1]
+        self.assertEqual(syllabus_stage["stage"], "syllabus_analysis")
+        self.assertEqual(syllabus_stage["status"], "completed")
+        self.assertEqual(syllabus_stage["details"]["units_count"], 6)
+        self.assertEqual(syllabus_stage["details"]["topics_count"], 67)
+        self.assertEqual(syllabus_stage["details"]["subtopics_count"], 38)
+        self.assertEqual(syllabus_stage["message"], "Analyzed syllabus structure (6 units, 67 topics).")
+
+    @patch("app.services.document_processing_service.DocumentProcessingService.process_material")
+    @patch("app.services.syllabus_alignment_service.SyllabusAlignmentService.align_material")
+    @patch("app.services.chunk_service.ChunkService.chunk_material")
+    @patch("app.services.embedding_service.EmbeddingService.generate_material_embeddings")
+    def test_11_syllabus_alignment_stage_consumes_alignment_summary_response_without_attribute_error(
+        self,
+        mock_embed: MagicMock,
+        mock_chunk: MagicMock,
+        mock_align: MagicMock,
+        mock_extract: MagicMock,
+    ) -> None:
+        """Regression test (ISSUE 1): Ensure reference-book / lecture alignment consumes canonical AlignmentSummaryResponse without AttributeError."""
+        self._seed_course("BCSE301")
+        mat_id = self._seed_material("BCSE301", SourceType.REFERENCE_BOOK, "reference_text.pdf")
+
+        mock_extract.return_value = MaterialProcessResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            processing_status=ProcessingStatus.PROCESSED,
+            pages_processed=18,
+            extraction_method="pymupdf",
+            total_characters=23167,
+            message="Document processed and text extracted successfully",
+        )
+
+        # Real canonical AlignmentSummaryResponse matching Phase 7 contract
+        real_alignment_res = AlignmentSummaryResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            total_pages_aligned=18,
+            in_syllabus_count=6,
+            out_of_syllabus_count=8,
+            ambiguous_count=4,
+            alignment_status="completed",
+            message="Material content aligned against course syllabus hierarchy successfully.",
+        )
+        mock_align.return_value = real_alignment_res
+
+        real_chunk_res = ChunkPreparationResponse(
+            material_id=mat_id,
+            course_code="BCSE301",
+            source_type="reference_book",
+            total_aligned_pages=18,
+            in_syllabus_pages=6,
+            chunks_created=12,
+            status="completed",
+            message="Successfully generated 12 knowledge chunks from 6 in-syllabus segments.",
+            chunks=[],
+        )
+        mock_chunk.return_value = real_chunk_res
+        mock_embed.return_value = MagicMock(embedded_count=12, dimension=384)
+
+        res = self.client.post(f"/dev/materials/{mat_id}/ingest", headers=self.auth_headers)
+        self.assertEqual(res.status_code, 200)
+        data = res.json()
+
+        self.assertEqual(data["overall_status"], "completed")
+        align_stage = data["stages"][1]
+        self.assertEqual(align_stage["stage"], "syllabus_alignment")
+        self.assertEqual(align_stage["status"], "completed")
+        self.assertEqual(align_stage["details"]["total_pages_aligned"], 18)
+        self.assertEqual(align_stage["details"]["in_syllabus_count"], 6)
+        self.assertEqual(align_stage["details"]["out_of_syllabus_count"], 8)
+        self.assertEqual(align_stage["details"]["ambiguous_count"], 4)
+        self.assertEqual(align_stage["message"], "Aligned 18 segments (6 in-syllabus).")
+
+        chunk_stage = data["stages"][2]
+        self.assertEqual(chunk_stage["stage"], "chunking")
+        self.assertEqual(chunk_stage["status"], "completed")
+        self.assertEqual(chunk_stage["details"]["chunks_created"], 12)
+        self.assertEqual(chunk_stage["details"]["in_syllabus_pages"], 6)
+        self.assertEqual(chunk_stage["details"]["total_aligned_pages"], 18)
+        self.assertEqual(chunk_stage["message"], "Prepared 12 context chunks.")
+
 
 if __name__ == "__main__":
     unittest.main()
+

@@ -21,7 +21,7 @@ COLLECTION_CHUNKS = "chunks"
 COLLECTION_GENERATED_QUESTIONS = "generated_questions"
 
 
-def init_db_indexes(db: Database[Dict[str, Any]]) -> None:
+def init_db_indexes(db: Database) -> None:
     """Create sensible database indexes for fast query filtering."""
     try:
         # Courses Collection: unique course_code index
@@ -87,12 +87,20 @@ def init_db_indexes(db: Database[Dict[str, Any]]) -> None:
         logger.warning(f"Could not create database indexes: {type(e).__name__} - {e}")
 
 
+import re
+
+
+def _sanitize_error_msg(error_msg: str) -> str:
+    """Mask credentials in error messages to prevent leaking secrets."""
+    return re.sub(r"://([^:]+):([^@]+)@", "://***:***@", str(error_msg))
+
+
 class MongoDBManager:
     """Manages the lifecycle of the single reusable MongoClient instance."""
 
     def __init__(self) -> None:
-        self.client: Optional[MongoClient[Dict[str, Any]]] = None
-        self.db: Optional[Database[Dict[str, Any]]] = None
+        self.client: Optional[MongoClient] = None
+        self.db: Optional[Database] = None
 
     def connect(self) -> None:
         """Initialize the MongoClient using configuration settings."""
@@ -111,7 +119,8 @@ class MongoDBManager:
                 if self.ping()[0]:
                     init_db_indexes(self.db)
             except Exception as e:
-                logger.error(f"Failed to initialize MongoDB client: {type(e).__name__}")
+                sanitized_msg = _sanitize_error_msg(str(e))
+                logger.error(f"Failed to initialize MongoDB client: {type(e).__name__} - {sanitized_msg}")
                 self.client = None
                 self.db = None
 
@@ -144,8 +153,10 @@ class MongoDBManager:
             logger.warning(f"Unexpected error pinging MongoDB: {type(e).__name__}")
             return False, f"Unexpected error: {type(e).__name__}"
 
-    def get_collection(self, collection_name: str) -> Optional[Collection[Dict[str, Any]]]:
+    def get_collection(self, collection_name: str) -> Optional[Collection]:
         """Return a typed collection from the active database."""
+        if self.db is None:
+            self.connect()
         if self.db is not None:
             return self.db[collection_name]
         return None
@@ -155,12 +166,12 @@ class MongoDBManager:
 db_manager = MongoDBManager()
 
 
-def get_database() -> Optional[Database[Dict[str, Any]]]:
+def get_database() -> Optional[Database]:
     """Return the active database instance."""
     return db_manager.db
 
 
-def get_client() -> Optional[MongoClient[Dict[str, Any]]]:
+def get_client() -> Optional[MongoClient]:
     """Return the active MongoClient instance."""
     return db_manager.client
 
@@ -170,36 +181,36 @@ def check_mongo_connection() -> Tuple[bool, Optional[str]]:
     return db_manager.ping()
 
 
-def get_courses_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_courses_collection() -> Optional[Collection]:
     """Return the courses collection."""
     return db_manager.get_collection(COLLECTION_COURSES)
 
 
-def get_materials_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_materials_collection() -> Optional[Collection]:
     """Return the materials collection."""
     return db_manager.get_collection(COLLECTION_MATERIALS)
 
 
-def get_extracted_content_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_extracted_content_collection() -> Optional[Collection]:
     """Return the extracted content collection."""
     return db_manager.get_collection(COLLECTION_EXTRACTED_CONTENT)
 
 
-def get_syllabus_alignments_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_syllabus_alignments_collection() -> Optional[Collection]:
     """Return the syllabus alignments collection."""
     return db_manager.get_collection(COLLECTION_SYLLABUS_ALIGNMENTS)
 
 
-def get_teaching_questions_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_teaching_questions_collection() -> Optional[Collection]:
     """Return the teaching questions collection."""
     return db_manager.get_collection(COLLECTION_TEACHING_QUESTIONS)
 
 
-def get_chunks_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_chunks_collection() -> Optional[Collection]:
     """Return the chunks collection."""
     return db_manager.get_collection(COLLECTION_CHUNKS)
 
 
-def get_generated_questions_collection() -> Optional[Collection[Dict[str, Any]]]:
+def get_generated_questions_collection() -> Optional[Collection]:
     """Return the generated questions collection."""
     return db_manager.get_collection(COLLECTION_GENERATED_QUESTIONS)

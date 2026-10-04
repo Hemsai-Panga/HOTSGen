@@ -13,6 +13,7 @@ from app.services.course_service import (
     CourseAlreadyExistsError,
     CourseNotFoundError,
     CourseService,
+    DatabaseUnavailableError,
 )
 
 router = APIRouter(dependencies=[Depends(get_current_developer)])
@@ -46,10 +47,15 @@ def create_course(
             status_code=status.HTTP_409_CONFLICT,
             detail=str(e),
         )
+    except DatabaseUnavailableError as e:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please check database connection.",
+        )
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="An error occurred while creating the course",
+            detail=f"An error occurred while creating the course: {type(e).__name__}",
         )
 
 
@@ -65,19 +71,30 @@ def list_courses_developer(
     current_developer: Dict[str, Any] = Depends(get_current_developer),
 ) -> List[CourseAdminResponse]:
     """List all courses with administrative metadata."""
-    courses = CourseService.list_courses(skip=skip, limit=limit)
-    return [
-        CourseAdminResponse(
-            id=c.id,
-            course_code=c.course_code,
-            course_name=c.course_name,
-            description=c.description,
-            units=c.units,
-            created_at=c.created_at,
-            updated_at=c.updated_at,
+    try:
+        courses = CourseService.list_courses(skip=skip, limit=limit)
+        return [
+            CourseAdminResponse(
+                id=c.id,
+                course_code=c.course_code,
+                course_name=c.course_name,
+                description=c.description,
+                units=c.units,
+                created_at=c.created_at,
+                updated_at=c.updated_at,
+            )
+            for c in courses
+        ]
+    except DatabaseUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please check database connection.",
         )
-        for c in courses
-    ]
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while listing courses: {type(e).__name__}",
+        )
 
 
 @router.get(
@@ -106,6 +123,16 @@ def get_course_developer(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_code.strip().upper()}' not found",
+        )
+    except DatabaseUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please check database connection.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while fetching the course: {type(e).__name__}",
         )
 
 
@@ -137,6 +164,16 @@ def update_course_developer(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{course_code.strip().upper()}' not found",
         )
+    except DatabaseUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please check database connection.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An error occurred while updating the course: {type(e).__name__}",
+        )
 
 
 @router.delete(
@@ -160,4 +197,14 @@ def delete_course_developer(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Course '{normalized_code}' not found",
+        )
+    except DatabaseUnavailableError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database service unavailable. Please check database connection.",
+        )
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Could not delete course: {type(e).__name__}",
         )

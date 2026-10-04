@@ -24,6 +24,11 @@ class CourseNotFoundError(CourseServiceError):
     pass
 
 
+class DatabaseUnavailableError(CourseServiceError):
+    """Raised when the database service is unavailable or disconnected."""
+    pass
+
+
 class CourseService:
     """Service layer orchestrating course business logic."""
 
@@ -33,16 +38,34 @@ class CourseService:
         Validate and create a new course.
         Normalizes course_code and ensures uniqueness.
         """
+        from app.repositories.course_repository import DatabaseConnectionError
+
         normalized_code = course_in.course_code.strip().upper()
 
         # Check for duplicate
-        existing = CourseRepository.get_course(normalized_code)
+        try:
+            existing = CourseRepository.get_course(normalized_code)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if existing:
             raise CourseAlreadyExistsError(f"Course with code '{normalized_code}' already exists.")
 
-        created = CourseRepository.create_course(course_in)
+        try:
+            created = CourseRepository.create_course(course_in)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not created:
-            raise CourseAlreadyExistsError(f"Course with code '{normalized_code}' could not be created or already exists.")
+            # Check if creation returned None due to DuplicateKeyError race condition
+            try:
+                existing = CourseRepository.get_course(normalized_code)
+            except DatabaseConnectionError as e:
+                raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
+            if existing:
+                raise CourseAlreadyExistsError(f"Course with code '{normalized_code}' already exists.")
+            raise CourseServiceError(f"Could not create course '{normalized_code}'.")
 
         logger.info(f"Course '{normalized_code}' created successfully.")
         return created
@@ -53,8 +76,14 @@ class CourseService:
         Retrieve a course by its normalized course code.
         Raises CourseNotFoundError if not found.
         """
+        from app.repositories.course_repository import DatabaseConnectionError
+
         normalized_code = course_code.strip().upper()
-        course = CourseRepository.get_course(normalized_code)
+        try:
+            course = CourseRepository.get_course(normalized_code)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not course:
             raise CourseNotFoundError(f"Course with code '{normalized_code}' not found.")
         return course
@@ -64,7 +93,12 @@ class CourseService:
         """
         List all available courses with pagination.
         """
-        return CourseRepository.list_courses(skip=skip, limit=limit)
+        from app.repositories.course_repository import DatabaseConnectionError
+
+        try:
+            return CourseRepository.list_courses(skip=skip, limit=limit)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
 
     @staticmethod
     def update_course(course_code: str, course_update: CourseUpdate) -> CourseInDB:
@@ -72,12 +106,22 @@ class CourseService:
         Update course metadata (course_name, description).
         Disallows altering course_code.
         """
+        from app.repositories.course_repository import DatabaseConnectionError
+
         normalized_code = course_code.strip().upper()
-        existing = CourseRepository.get_course(normalized_code)
+        try:
+            existing = CourseRepository.get_course(normalized_code)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not existing:
             raise CourseNotFoundError(f"Course with code '{normalized_code}' not found.")
 
-        updated = CourseRepository.update_course(normalized_code, course_update)
+        try:
+            updated = CourseRepository.update_course(normalized_code, course_update)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not updated:
             raise CourseNotFoundError(f"Course with code '{normalized_code}' not found.")
 
@@ -94,22 +138,36 @@ class CourseService:
         - Checks for associated materials (if any are present in future milestones).
         - Safely executes deletion from courses repository.
         """
+        from app.repositories.course_repository import DatabaseConnectionError
+
         normalized_code = course_code.strip().upper()
-        existing = CourseRepository.get_course(normalized_code)
+        try:
+            existing = CourseRepository.get_course(normalized_code)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not existing:
             raise CourseNotFoundError(f"Course with code '{normalized_code}' not found.")
 
         # Safe dependency check: check if materials exist
-        materials = MaterialRepository.list_materials_by_course(normalized_code)
-        if materials:
-            logger.warning(
-                f"Course '{normalized_code}' has {len(materials)} associated material records. "
-                "Proceeding with course removal."
-            )
+        try:
+            materials = MaterialRepository.list_materials_by_course(normalized_code)
+            if materials:
+                logger.warning(
+                    f"Course '{normalized_code}' has {len(materials)} associated material records. "
+                    "Proceeding with course removal."
+                )
+        except Exception:
+            pass
 
-        success = CourseRepository.delete_course(normalized_code)
+        try:
+            success = CourseRepository.delete_course(normalized_code)
+        except DatabaseConnectionError as e:
+            raise DatabaseUnavailableError(f"Database unavailable: {e}")
+
         if not success:
             raise CourseNotFoundError(f"Failed to delete course '{normalized_code}'.")
 
         logger.info(f"Course '{normalized_code}' deleted successfully.")
         return True
+
